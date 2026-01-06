@@ -68,7 +68,7 @@
     },
     {
       "parameters": {
-        "chatId": "8355672358",
+        "chatId": "placeholder_chatId",
         "text": "={{ $json.response }}",
         "additionalFields": {
           "appendAttribution": false
@@ -97,7 +97,7 @@
           "__rl": true,
           "value": "rodriguezant0615@gmail.com",
           "mode": "list",
-          "cachedResultName": "rodriguezant0615@gmail.com"
+          "cachedResultName": "placeholder@gmail.com"
         },
         "returnAll": true,
         "timeMin": "={{ $('Date Config').first().json.targetDate }}T00:00:00-05:00",
