@@ -1,0 +1,240 @@
+{
+  "name": "Calendar Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 5
+            }
+          ]
+        }
+      },
+      "id": "f90d7606-0d80-4add-bde3-5fe6806ceb46",
+      "name": "Daily 5 AM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -6448,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "task": "MDc4OTMyMTYyODUyODcwMTE5MzI6MDow",
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "id": "9e8a5cf3-8593-4db7-bbbb-546e994690a7",
+      "name": "Get All Tasks",
+      "type": "n8n-nodes-base.googleTasks",
+      "typeVersion": 1,
+      "position": [
+        -6000,
+        1776
+      ],
+      "credentials": {
+        "googleTasksOAuth2Api": {
+          "id": "YOWPGOsQpaVzSdo1",
+          "name": "Google Tasks account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "68b16b1d-cb23-4885-a6d6-6562bfd4d68f",
+      "name": "Merge Calendar and Tasks",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -5776,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all input items from the merge node\nconst items = $input.all();\n\n// Read targetDate and prettyDate from Date Config node\nconst targetDate = $('Date Config').first().json.targetDate;\nconst prettyDate = $('Date Config').first().json.prettyDate;\n\n// Separate events and tasks\nconst events = [];\nconst tasks = [];\n\nfor (const item of items) {\n  const json = item.json;\n  \n  // Check if it's a task (has status field and kind starts with 'tasks#')\n  if (json.status && json.kind && json.kind.startsWith('tasks#')) {\n    // Filter tasks by status='needsAction' and due date starting with targetDate\n    if (json.status === 'needsAction' && json.due && json.due.startsWith(targetDate)) {\n      tasks.push(json);\n    }\n  } else if (json.start) {\n    // It's an event\n    events.push(json);\n  }\n}\n\n// Sort events by start time\nevents.sort((a, b) => {\n  const startA = new Date(a.start?.dateTime || a.start?.date || 0);\n  const startB = new Date(b.start?.dateTime || b.start?.date || 0);\n  return startA - startB;\n});\n\n// Format time to 12-hour AM/PM format in America/New_York timezone\nfunction formatTime(dateStr) {\n  if (!dateStr) return 'Time TBD';\n  try {\n    const date = new Date(dateStr);\n    return date.toLocaleTimeString('en-US', { \n      timeZone: 'America/New_York',\n      hour: 'numeric',\n      minute: '2-digit',\n      hour12: true\n    });\n  } catch (e) {\n    return 'Time TBD';\n  }\n}\n\n// Build the response\nlet response = `📅 ${prettyDate}\\n\\n`;\n\n// Add Events section\nresponse += 'Events:\\n';\nif (events.length === 0) {\n  response += 'No events scheduled.\\n';\n} else {\n  for (const event of events) {\n    const title = event.summary || 'Untitled Event';\n    const startTime = formatTime(event.start?.dateTime || event.start?.date);\n    const endTime = formatTime(event.end?.dateTime || event.end?.date);\n    response += `• ${startTime} - ${endTime} | ${title}\\n`;\n  }\n}\n\n// Add Tasks section\nresponse += '\\nTasks:\\n';\nif (tasks.length === 0) {\n  response += 'No tasks due.\\n';\n} else {\n  for (const task of tasks) {\n    const title = task.title || 'Untitled Task';\n    response += `• ${title}\\n`;\n  }\n}\n\n// Return exactly ONE JSON item with response field\nreturn [{ json: { response } }];"
+      },
+      "id": "34a118a0-8049-42a3-95ce-af8fcf2f09b4",
+      "name": "Format Daily Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5552,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "8355672358",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "0fb094ce-a354-4327-8990-6651d58090cf",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -5328,
+        1680
+      ],
+      "webhookId": "5dc19b13-c08e-4ced-b8ca-1be414f2b08f",
+      "credentials": {
+        "telegramApi": {
+          "id": "aRuOQBScCDJquA5A",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "rodriguezant0615@gmail.com",
+          "mode": "list",
+          "cachedResultName": "rodriguezant0615@gmail.com"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $('Date Config').first().json.targetDate }}T00:00:00-05:00",
+        "timeMax": "={{ $('Date Config').first().json.targetDate }}T23:59:59-05:00",
+        "options": {
+          "orderBy": "startTime",
+          "recurringEventHandling": "expand"
+        }
+      },
+      "id": "759d2406-cc6f-46eb-aee0-e26da57519c0",
+      "name": "Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -6000,
+        1584
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "xisCHOksTqInwrMk",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "targetDate",
+              "value": "={{ $now.setZone('America/New_York').toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "prettyDate",
+              "value": "={{ $now.setZone('America/New_York').toFormat('EEEE, MMMM d, yyyy') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "323bc2b1-45ed-410b-9caa-dc13630dd3d0",
+      "name": "Date Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6224,
+        1680
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 5 AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Date Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Tasks": {
+      "main": [
+        [
+          {
+            "node": "Merge Calendar and Tasks",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Calendar and Tasks": {
+      "main": [
+        [
+          {
+            "node": "Format Daily Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Merge Calendar and Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date Config": {
+      "main": [
+        [
+          {
+            "node": "Get All Tasks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a6254347-4f64-4407-b157-1bf99a9d336f",
+  "meta": {
+    "instanceId": "eedf6d3988132129dd0741fa7bbd4c89df13e646d04edd7df3fb8db3a16d453a"
+  },
+  "id": "0CQ6Pm3ng1oEtg8W",
+  "tags": []
+}
